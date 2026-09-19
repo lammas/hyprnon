@@ -29,7 +29,7 @@ local options = {
 	--                                         center column symmetrically, shrinking/growing left and right equally
 	workspaces = {
 		["1"] = { widths = { left = 0.33, center = 0.33, right = 0.33 }, stack = "left" },
-		["2"] = { widths = { left = 0.25, center = 0.5, right = 0.25 }, stack = "left" },
+		["2"] = { widths = { left = 0.33, center = 0.33, right = 0.33 }, stack = "left" },
 		["3"] = { widths = { left = 0.25, center = 0.5, right = 0.25 }, stack = "right" },
 		["4"] = { widths = { left = 0.33, center = 0.33, right = 0.33 }, stack = "left" },
 		["special:magic"] = { widths = { left = 0.25, center = 0.5, right = 0.25 }, stack = "left" },
