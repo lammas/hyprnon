@@ -59,8 +59,8 @@ return function(opts)
 	end
 
 	hl.bind(MainMod .. " + CTRL + P", dsp.workspace.move({ monitor = "+1" }))
-	hl.bind(MainMod .. " + T", dsp.layout("toggle-stack"))
-	hl.bind(MainMod .. " + SHIFT + T", dsp.layout("reset-widths"))
+	hl.bind(MainMod .. " + SHIFT + T", dsp.layout("toggle-stack"))
+	hl.bind(MainMod .. " + T", dsp.layout("reset-widths"))
 	hl.bind(MainMod .. " + SHIFT + R", dsp.layout("toggle-resize"))
 
 	-- media keys
