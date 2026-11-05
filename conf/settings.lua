@@ -32,6 +32,7 @@ return function(opts)
 			resize_on_border = false,
 			allow_tearing = false,
 			layout = "lua:hyprnon",
+			-- layout = "dwindle",
 			-- layout = "master",
 		},
 
@@ -93,7 +94,7 @@ return function(opts)
 			follow_mouse = 2,
 			float_switch_override_focus = 0,
 			sensitivity = 0,
-			repeat_delay = 220,
+			repeat_delay = 320,
 			repeat_rate = 50,
 
 			touchpad = {

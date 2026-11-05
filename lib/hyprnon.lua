@@ -429,7 +429,7 @@ function M.setup(opts)
 	local move_bind = opts.move_bind or "mouse:272"
 	local resize_bind = opts.resize_bind or "mouse:273"
 	hl.bind(main_mod .. " + " .. resize_bind, resize_start, { mouse = true })
-	hl.bind(main_mod .. " + " .. resize_bind, resize_stop, { release = true, mouse = true })
+	hl.bind(main_mod .. " + " .. resize_bind, resize_stop, { release = true })
 	hl.bind(main_mod .. " + " .. move_bind, drag_window, { mouse = true })
 
 end
