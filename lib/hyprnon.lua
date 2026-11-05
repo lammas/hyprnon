@@ -30,6 +30,7 @@ local defaults = {
 	widths = { left = 0.33, center = 0.33, right = 0.33 },
 	stack = "left",
 	resize = "symmetric",
+	special_scale = 1,
 }
 
 local workspaces = {}
@@ -56,12 +57,16 @@ local function workspace_key(workspace)
 		return nil
 	end
 
-	local id = workspace.id
-	if id and id < 0 and workspace.name then
+	-- 0.57 drops the numbered id for specials, name carries the full selector
+	if workspace.special then
 		return workspace.name
 	end
 
-	return id
+	return workspace.id
+end
+
+local function is_special(workspace)
+	return workspace and workspace.special or false
 end
 
 -- workspace of the first target window, or nil if there are no targets.
@@ -304,24 +309,36 @@ local function register_layout()
 			local options = options_for(workspace)
 			local columns = distribute(count, options)
 
+			-- scale the whole region so windows stay adjacent and direction focus works
+			local window = ctx.targets[1].window
+			local scale = is_special(window and window.workspace) and options.special_scale or 1
+			local region_x, region_y = area.x, area.y
+			local region_w, region_h = area_w, area_h
+			if scale ~= 1 then
+				region_w = area_w * scale
+				region_h = area_h * scale
+				region_x = area.x + (area_w - region_w) / 2
+				region_y = area.y + (area_h - region_h) / 2
+			end
+
 			-- normalize widths across all columns so empty ones still reserve space
 			local total = 0
 			for _, name in ipairs(COLUMNS) do
 				total = total + options.widths[name]
 			end
 
-			local x = area.x
+			local x = region_x
 			for _, name in ipairs(COLUMNS) do
-				local width = area_w * options.widths[name] / total
+				local width = region_w * options.widths[name] / total
 				local members = columns[name]
 
 				if #members > 0 then
-					local height = area_h / #members
+					local height = region_h / #members
 
 					for position, index in ipairs(members) do
 						ctx.targets[index]:place({
 							x = x,
-							y = area.y + (position - 1) * height,
+							y = region_y + (position - 1) * height,
 							w = width,
 							h = height,
 						})
@@ -417,6 +434,10 @@ function M.setup(opts)
 				defaults[key] = value
 			end
 		end
+	end
+
+	if opts.special_scale then
+		defaults.special_scale = opts.special_scale
 	end
 
 	if opts.workspaces then

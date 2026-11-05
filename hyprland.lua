@@ -37,6 +37,7 @@ local options = {
 
 	resize_bind        = "mouse:273",
 	move_bind          = "mouse:272",
+	special_scale      = 0.90, -- scale factor for windows on special workspaces
 }
 ----------------------------------------------------------------------------------------------------------------------
 

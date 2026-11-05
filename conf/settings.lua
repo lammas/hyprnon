@@ -64,13 +64,11 @@ return function(opts)
 		-- dwindle fallback for runtime switching
 		dwindle = {
 			preserve_split = true,
-			special_scale_factor = 0.90,
 		},
 
 		-- master fallback for runtime switching
 		master = {
 			allow_small_split = true,
-			special_scale_factor = 0.98,
 			mfact = 0.33,
 			new_status = "slave",
 			new_on_top = false,
