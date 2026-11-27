@@ -38,6 +38,19 @@ local workspaces = {}
 -- mutable runtime overrides (toggles, manual resizes)
 local runtime_overrides = {}
 
+-- per-workspace column memory: order = last list order, col = address -> column
+local layouts = {}
+
+local function layout_memory(workspace)
+	local key = tostring(workspace)
+	local mem = layouts[key]
+	if not mem then
+		mem = { order = {}, col = {} }
+		layouts[key] = mem
+	end
+	return mem
+end
+
 local function runtime_options(workspace)
 	local key = tostring(workspace)
 	local options = runtime_overrides[key]
@@ -135,8 +148,8 @@ local function options_for(workspace)
 	return options
 end
 
--- distribute `count` windows into the left/center/right columns
-local function distribute(count, options)
+-- split `count` windows into columns purely by list order, used to realize a swap
+local function distribute_by_index(count, options)
 	local columns = { left = {}, center = {}, right = {} }
 	local max = options.max
 	-- normalize the stack side; anything other than "right" means "left"
@@ -174,6 +187,172 @@ local function distribute(count, options)
 			end
 		end
 	end
+
+	return columns
+end
+
+local function to_set(list)
+	local set = {}
+	for _, addr in ipairs(list) do
+		set[addr] = true
+	end
+	return set
+end
+
+local function same_order(a, b)
+	if #a ~= #b then
+		return false
+	end
+	for i = 1, #a do
+		if a[i] ~= b[i] then
+			return false
+		end
+	end
+	return true
+end
+
+-- place windows with no remembered column: empty columns first, then stack on the configured side
+local function fill_new(entries, columns, options)
+	local stack = options.stack == "right" and "right" or "left"
+	local max = options.max
+
+	local function room(name)
+		local limit = max[name]
+		return not limit or #columns[name] < limit
+	end
+
+	for _, entry in ipairs(entries) do
+		local placed = false
+
+		for _, name in ipairs(FILL_ORDER) do
+			if #columns[name] == 0 and room(name) then
+				entry.column = name
+				placed = true
+				break
+			end
+		end
+
+		if not placed then
+			for _, name in ipairs(STACK_ORDER[stack]) do
+				if room(name) then
+					entry.column = name
+					placed = true
+					break
+				end
+			end
+
+			if not placed then
+				entry.column = stack
+			end
+		end
+
+		table.insert(columns[entry.column], entry)
+	end
+end
+
+-- fill an empty column from a stacked one, newest first, until no hole has a donor
+local function promote_from_stacks(columns, options)
+	local donor_order = { options.stack, "left", "center", "right" }
+
+	while true do
+		local empty
+		for _, name in ipairs(FILL_ORDER) do
+			if #columns[name] == 0 then
+				empty = name
+				break
+			end
+		end
+		if not empty then
+			return
+		end
+
+		local donor
+		for _, name in ipairs(donor_order) do
+			if name ~= empty and #columns[name] >= 2 then
+				donor = name
+				break
+			end
+		end
+		if not donor then
+			return
+		end
+
+		local entry = table.remove(columns[donor], #columns[donor])
+		entry.column = empty
+		table.insert(columns[empty], entry)
+	end
+end
+
+-- give each window a column, keeping survivors put across add and remove.
+-- a window keeps its column until the list order changes, which means a swap or move.
+local function assign_columns(ctx, options, mem)
+	local entries, addrs, entry_by_addr = {}, {}, {}
+	for index = 1, #ctx.targets do
+		local target = ctx.targets[index]
+		local window = target.window
+		local addr = window and window.address or ("#" .. index)
+		local entry = { target = target, addr = addr }
+		entries[index] = entry
+		addrs[index] = addr
+		entry_by_addr[addr] = entry
+	end
+
+	local columns = { left = {}, center = {}, right = {} }
+	local current = to_set(addrs)
+
+	local survivors_now, survivors_prev = {}, {}
+	for _, addr in ipairs(addrs) do
+		if mem.col[addr] then
+			table.insert(survivors_now, addr)
+		end
+	end
+	for _, addr in ipairs(mem.order) do
+		if current[addr] then
+			table.insert(survivors_prev, addr)
+		end
+	end
+
+	if not same_order(survivors_now, survivors_prev) then
+		-- the list was reordered by a swap or directional move, re-derive from list order
+		local by_index = distribute_by_index(#addrs, options)
+		for _, name in ipairs(COLUMNS) do
+			for _, index in ipairs(by_index[name]) do
+				local entry = entries[index]
+				entry.column = name
+				table.insert(columns[name], entry)
+			end
+		end
+	else
+		-- keep every survivor in its remembered column, then place the new windows
+		local prev = to_set(mem.order)
+		for _, addr in ipairs(mem.order) do
+			if current[addr] then
+				local entry = entry_by_addr[addr]
+				entry.column = mem.col[addr]
+				table.insert(columns[entry.column], entry)
+			end
+		end
+
+		local fresh = {}
+		for _, entry in ipairs(entries) do
+			if not prev[entry.addr] then
+				table.insert(fresh, entry)
+			end
+		end
+		fill_new(fresh, columns, options)
+	end
+
+	promote_from_stacks(columns, options)
+
+	-- remember the assignment, dropping windows that are gone
+	local col = {}
+	for _, name in ipairs(COLUMNS) do
+		for _, entry in ipairs(columns[name]) do
+			col[entry.addr] = entry.column
+		end
+	end
+	mem.col = col
+	mem.order = addrs
 
 	return columns
 end
@@ -307,7 +486,7 @@ local function register_layout()
 			-- recalculate always has targets (count > 0 checked above)
 			local workspace = ctx_workspace(ctx)
 			local options = options_for(workspace)
-			local columns = distribute(count, options)
+			local columns = assign_columns(ctx, options, layout_memory(workspace))
 
 			-- scale the whole region so windows stay adjacent and direction focus works
 			local window = ctx.targets[1].window
@@ -335,8 +514,8 @@ local function register_layout()
 				if #members > 0 then
 					local height = region_h / #members
 
-					for position, index in ipairs(members) do
-						ctx.targets[index]:place({
+					for position, entry in ipairs(members) do
+						entry.target:place({
 							x = x,
 							y = region_y + (position - 1) * height,
 							w = width,
