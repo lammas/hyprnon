@@ -65,9 +65,26 @@ return function(opts)
 	end
 
 	hl.bind(MainMod .. " + CTRL + P", dsp.workspace.move({ monitor = "+1" }))
-	hl.bind(MainMod .. " + SHIFT + T", dsp.layout("toggle-stack"))
-	hl.bind(MainMod .. " + T", dsp.layout("reset-widths"))
-	hl.bind(MainMod .. " + SHIFT + R", dsp.layout("toggle-resize"))
+
+	-- layout
+	local function hyprnon_msg(msg)
+		return function()
+			if hl.get_config("general.layout") == "lua:hyprnon" then
+				hl.dispatch(dsp.layout(msg))
+			end
+		end
+	end
+
+	local function toggle_layout()
+		local to = hl.get_config("general.layout") == "dwindle" and "lua:hyprnon" or "dwindle"
+		hl.config({ general = { layout = to } })
+		hl.notification.create({ text = to, duration = 1200 })
+	end
+
+	hl.bind(MainMod .. " + SHIFT + Space", toggle_layout)
+	hl.bind(MainMod .. " + SHIFT + T", hyprnon_msg("toggle-stack"))
+	hl.bind(MainMod .. " + T", hyprnon_msg("reset-widths"))
+	hl.bind(MainMod .. " + SHIFT + R", hyprnon_msg("toggle-resize"))
 
 	-- media keys
 	hl.bind("XF86MonBrightnessUp", dsp.exec_cmd("brightnessctl -e4 -n2 set 5%+"), { locked = true, repeating = true })
