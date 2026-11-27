@@ -40,6 +40,8 @@ return function(opts)
 	hl.bind(MainMod .. " + down", dsp.focus({ direction = "d" }))
 	hl.bind(MainMod .. " + mouse_down", dsp.focus({ workspace = "e+1" }))
 	hl.bind(MainMod .. " + mouse_up", dsp.focus({ workspace = "e-1" }))
+	hl.bind(MainMod .. " + TAB", dsp.window.cycle_next({ floating = true }))
+	hl.bind(MainMod .. " + SHIFT + TAB", dsp.window.cycle_next({ tiled = true }))
 
 	-- window movement
 	local directions = {
