@@ -32,3 +32,14 @@ hl.window_rule({
 	},
 	workspace = "special:alt",
 })
+
+-- open/save
+hl.window_rule({
+	name = "portal-dialogs",
+	match = {
+		class = "^xdg-desktop-portal-.*$|^org\\.freedesktop\\.impl\\.portal\\.desktop\\..*$",
+	},
+	float = true,
+	center = true,
+	size = { "monitor_w * 0.33", "monitor_h * 0.5" },
+})
