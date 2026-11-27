@@ -6,6 +6,12 @@ return function(opts)
 
 	local dsp = hl.dsp
 
+	-- the blank must wait for hyprlock to draw, or a wake shows the lockdead image
+	local function lock()
+		hl.exec_cmd("pidof hyprlock || hyprlock")
+		hl.timer(function() hl.dispatch(dsp.dpms({ action = "off" })) end, { timeout = 2000, type = "oneshot" })
+	end
+
 	-- general shell
 	hl.bind(MainMod .. " + Q", dsp.exec_cmd(Terminal))
 	hl.bind(MainMod .. " + C", dsp.window.close())
@@ -14,7 +20,7 @@ return function(opts)
 	hl.bind(MainMod .. " + V", dsp.window.float({ action = "toggle" }))
 	hl.bind(MainMod .. " + F", dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }))
 	hl.bind(MainMod .. " + R", dsp.exec_cmd(Menu))
-	hl.bind(MainMod .. " + L", dsp.exec_cmd("pidof hyprlock || hyprlock"))
+	hl.bind(MainMod .. " + L", lock)
 
 	-- navigation
 	for workspace = 1, 10 do
